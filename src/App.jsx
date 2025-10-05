@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { Component } from "react";
 import Searchbar from "./components/Searchbar/Searchbar.jsx";
 import ImageGallery from "./components/ImageGallery/ImageGallery.jsx";
 import Button from "./components/Button/Button.jsx";
@@ -9,52 +9,61 @@ import { Box } from "./App.js";
 const API_KEY = "50072628-8f6f62aa1cc293b82b9b384d5";
 const PER_PAGE = 12;
 
-export default function App() {
-  const [query, setQuery] = useState("");
-  const [images, setImages] = useState([]);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [modalImg, setModalImg] = useState(null);
-
-  useEffect(() => {
-    if (!query) return;
-
-    const fetchImages = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `https://pixabay.com/api/?key=${API_KEY}&q=${query}&page=${page}&image_type=photo&orientation=horizontal&per_page=${PER_PAGE}`
-        );
-        const { hits } = await response.json();
-
-        setImages((prev) => (page === 1 ? hits : [...prev, ...hits]));
-      } catch (error) {
-        console.error("Fetch error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchImages();
-  }, [query, page]);
-
-  const handleSearch = (newQuery) => {
-    setQuery(newQuery);
-    setPage(1);
+export default class App extends Component {
+  state = {
+    query: "",
+    images: [],
+    page: 1,
+    loading: false,
+    modal: null,
   };
 
-  const handleLoadMore = () => setPage((prev) => prev + 1);
+  fetchImages = (newQuery = this.state.query, newPage = this.state.page) => {
+    if (!newQuery) return;
+    this.setState({ loading: true });
 
-  const openModal = (url) => setModalImg(url);
-  const closeModal = () => setModalImg(null);
+    fetch(
+      `https://pixabay.com/api/?key=${API_KEY}&q=${newQuery}&page=${newPage}&image_type=photo&orientation=horizontal&per_page=${PER_PAGE}`
+    )
+      .then(res => res.json())
+      .then(data => {
+        this.setState(prev => ({
+          images: newPage === 1 ? data.hits : [...prev.images, ...data.hits],
+          loading: false,
+        }));
+      })
+      .catch(err => {
+        console.error("Fetch error:", err);
+        this.setState({ loading: false });
+      });
+  };
 
-  return (
-    <Box>
-      <Searchbar onSubmit={handleSearch} />
-      <ImageGallery images={images} onClick={openModal} />
-      {loading && <Loader />}
-      {images.length > 0 && !loading && <Button onClick={handleLoadMore} />}
-      {modalImg && <Modal img={modalImg} onClose={closeModal} />}
-    </Box>
-  );
+  handleSearch = query => {
+    this.setState({ query, page: 1 }, () => {
+      this.fetchImages(query, 1);
+    });
+  };
+
+  handleLoadMore = () => {
+    const nextPage = this.state.page + 1;
+    this.setState({ page: nextPage }, () => {
+      this.fetchImages(this.state.query, nextPage);
+    });
+  };
+
+  render() {
+    const { images, loading, modal } = this.state;
+
+    return (
+      <Box>
+        <Searchbar onSubmit={this.handleSearch} />
+        <ImageGallery images={images} onClick={modal => this.setState({ modal })} />
+        {loading && <Loader />}
+        {images.length > 0 && !loading && (
+          <Button onClick={this.handleLoadMore} />
+        )}
+        {modal && <Modal img={modal} onClose={() => this.setState({ modal: null })} />}
+      </Box>
+    );
+  }
 }
