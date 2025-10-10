@@ -15,54 +15,83 @@ export default class App extends Component {
     images: [],
     page: 1,
     loading: false,
-    modal: null,
+    showModal: false,
+    largeImageURL: "",
   };
 
-  fetchImages = (newQuery = this.state.query, newPage = this.state.page) => {
-    if (!newQuery) return;
+  componentDidMount() {
+    console.log("App змонтовано");
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.query !== this.state.query || prevState.page !== this.state.page) {
+      this.fetchImages();
+    }
+  }
+
+  componentWillUnmount() {
+    console.log("Компонент App буде видалено");
+  }
+
+  fetchImages = () => {
+    const { query, page } = this.state;
+    if (!query) return;
+
     this.setState({ loading: true });
 
-    fetch(
-      `https://pixabay.com/api/?key=${API_KEY}&q=${newQuery}&page=${newPage}&image_type=photo&orientation=horizontal&per_page=${PER_PAGE}`
-    )
-      .then(res => res.json())
-      .then(data => {
-        this.setState(prev => ({
-          images: newPage === 1 ? data.hits : [...prev.images, ...data.hits],
-          loading: false,
+    const url = `https://pixabay.com/api/?key=${API_KEY}&q=${query}&page=${page}&image_type=photo&orientation=horizontal&per_page=${PER_PAGE}`;
+
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        this.setState((prev) => ({
+          images: page === 1 ? data.hits : [...prev.images, ...data.hits],
         }));
       })
-      .catch(err => {
-        console.error("Fetch error:", err);
+      .catch((err) => {
+        console.error("Помилка запиту:", err);
+      })
+      .finally(() => {
         this.setState({ loading: false });
       });
   };
 
-  handleSearch = query => {
-    this.setState({ query, page: 1 }, () => {
-      this.fetchImages(query, 1);
+  handleSearch = (query) => {
+    this.setState({
+      query,
+      images: [],
+      page: 1,
     });
   };
 
-  handleLoadMore = () => {
-    const nextPage = this.state.page + 1;
-    this.setState({ page: nextPage }, () => {
-      this.fetchImages(this.state.query, nextPage);
+  loadMore = () => {
+    this.setState((prev) => ({ page: prev.page + 1 }));
+  };
+
+  openModal = (url) => {
+    this.setState({
+      showModal: true,
+      largeImageURL: url,
+    });
+  };
+
+  closeModal = () => {
+    this.setState({
+      showModal: false,
+      largeImageURL: "",
     });
   };
 
   render() {
-    const { images, loading, modal } = this.state;
+    const { images, loading, showModal, largeImageURL } = this.state;
 
     return (
       <Box>
         <Searchbar onSubmit={this.handleSearch} />
-        <ImageGallery images={images} onClick={modal => this.setState({ modal })} />
+        <ImageGallery images={images} onImageClick={this.openModal} />
         {loading && <Loader />}
-        {images.length > 0 && !loading && (
-          <Button onClick={this.handleLoadMore} />
-        )}
-        {modal && <Modal img={modal} onClose={() => this.setState({ modal: null })} />}
+        {images.length > 0 && !loading && <Button onClick={this.loadMore} />}
+        {showModal && <Modal largeImageURL={largeImageURL} onClose={this.closeModal} />}
       </Box>
     );
   }
