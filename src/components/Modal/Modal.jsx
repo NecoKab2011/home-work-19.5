@@ -1,21 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { Overlay, ModalSt, Image } from "./Modal"
 
 
 export default function Modal({ img, onClose }) {
+  const closeByEsc = useCallback(
+    (e) => {
+      if (e.code === "Escape") onClose();
+    },
+    [onClose]
+  );
+
   useEffect(() => {
-    const closeByEsc = e => e.code === "Escape" && onClose();
     window.addEventListener("keydown", closeByEsc);
     return () => window.removeEventListener("keydown", closeByEsc);
-  }, [onClose]);
+  }, [closeByEsc]);
 
-  const handleClick = e => {
-    if (e.target === e.currentTarget) onClose();
-  };
+  const handleClick = useCallback(
+    (e) => {
+      if (e.target === e.currentTarget) onClose();
+    },
+    [onClose]
+  );
 
   return (
     <Overlay onClick={handleClick}>
-      <ModalSt >
+      <ModalSt>
         <Image src={img} alt="" />
       </ModalSt>
     </Overlay>
